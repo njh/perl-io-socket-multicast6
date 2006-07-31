@@ -1,7 +1,7 @@
 Build.PL
 Changes
-lib/IO/Socket/Multicast.pm
-lib/IO/Socket/Multicast.xs
+lib/IO/Socket/Multicast6.pm
+lib/IO/Socket/Multicast6.xs
 MANIFEST
 META.yml
 README
