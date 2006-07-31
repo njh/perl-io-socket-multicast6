@@ -1,4 +1,4 @@
-package IO::Socket::Multicast;
+package IO::Socket::Multicast6;
 
 require 5.005;
 use strict;
@@ -27,7 +27,7 @@ my $IP = '\d+\.\d+\.\d+\.\d+';
 
 sub import {
   Socket->export_to_level(1,@_);
-  IO::Socket::Multicast->export_to_level(1,@_);
+  IO::Socket::Multicast6->export_to_level(1,@_);
 }
 
 sub new {
@@ -103,21 +103,21 @@ sub mcast_send {
   return send($sock,$data,0,$dest);
 }
 
-bootstrap IO::Socket::Multicast $VERSION;
+bootstrap IO::Socket::Multicast6 $VERSION;
 
 1;
 __END__
 
 =head1 NAME
 
-IO::Socket::Multicast - Send and receive multicast messages
+IO::Socket::Multicast6 - Send and receive multicast messages
 
 =head1 SYNOPSIS
 
-  use IO::Socket::Multicast;
+  use IO::Socket::Multicast6;
 
   # create a new UDP socket ready to read datagrams on port 1100
-  my $s = IO::Socket::Multicast->new(LocalPort=>1100);
+  my $s = IO::Socket::Multicast6->new(LocalPort=>1100);
 
   # Add a multicast group
   $s->mcast_add('225.0.1.1');
@@ -147,7 +147,7 @@ IO::Socket::Multicast - Send and receive multicast messages
 
 =head1 DESCRIPTION
 
-The IO::Socket::Multicast module subclasses IO::Socket::INET to enable
+The IO::Socket::Multicast6 module subclasses IO::Socket::INET to enable
 you to manipulate multicast groups.  With this module (and an
 operating system that supports multicasting), you will be able to
 receive incoming multicast transmissions and generate your own
@@ -193,9 +193,9 @@ messages is received by the local machine), call mcast_loopback().
 
 =over 4
 
-=item $socket = IO::Socket::Multicast->new([LocalPort=>$port,...])
+=item $socket = IO::Socket::Multicast6->new([LocalPort=>$port,...])
 
-The new() method is the constructor for the IO::Socket::Multicast
+The new() method is the constructor for the IO::Socket::Multicast6
 class.  It takes the same arguments as IO::Socket::INET, except that
 the B<Proto> argument, rather than defaulting to "tcp", will default
 to "udp", which is more appropriate for multicasting.
@@ -372,12 +372,12 @@ output.
  # client
 
  use strict;
- use IO::Socket::Multicast;
+ use IO::Socket::Multicast6;
 
  use constant GROUP => '226.1.1.2';
  use constant PORT  => '2000';
 
- my $sock = IO::Socket::Multicast->new(Proto=>'udp',LocalPort=>PORT);
+ my $sock = IO::Socket::Multicast6->new(Proto=>'udp',LocalPort=>PORT);
  $sock->mcast_add(GROUP) || die "Couldn't set group: $!\n";
 
  while (1) {

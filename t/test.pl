@@ -1,22 +1,5 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl test.pl'
 
-use lib './blib/lib','./blib/arch';
-
-BEGIN { $| = 1; print "1..14\n"; }
-END {print "not ok 1\n" unless $loaded;}
-use IO::Socket::Multicast;
-$loaded = 1;
-print "ok 1\n";
-
-######################### End of black magic.
-
-sub test {
-  my ($flag,$test) = @_;
-  print $flag ? "ok $test\n" : "not ok $test ($!)\n";
-}
-
-my $s = IO::Socket::Multicast->new;
+my $s = IO::Socket::Multicast6->new;
 
 # dumb tests for incompatibilities, etc.
 my $io_interface_avail = eval "use IO::Interface ':flags'; 1;";

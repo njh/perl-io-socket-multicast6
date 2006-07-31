@@ -152,7 +152,7 @@ my_inet_aton(register const char *cp, struct in_addr *addr)
 #endif
 
 
-MODULE = IO::Socket::Multicast	PACKAGE = IO::Socket::Multicast
+MODULE = IO::Socket::Multicast6	PACKAGE = IO::Socket::Multicast6
 
 
 void
