@@ -1,0 +1,11 @@
+Build.PL
+Changes
+lib/IO/Socket/Multicast.pm
+lib/IO/Socket/Multicast.xs
+MANIFEST
+META.yml
+README
+Makefile.PL
+t/test.pl
+examples/server.pl
+examples/client.pl
