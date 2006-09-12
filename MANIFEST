@@ -6,6 +6,8 @@ MANIFEST
 META.yml
 README
 Makefile.PL
-t/test.pl
-examples/server.pl
-examples/client.pl
+t/00use.t
+examples/unicast-send.pl
+examples/unicast-recieve.pl
+examples/multicast-send.pl
+examples/multicast-recieve.pl

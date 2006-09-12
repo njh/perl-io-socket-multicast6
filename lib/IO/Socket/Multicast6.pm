@@ -2,33 +2,33 @@ package IO::Socket::Multicast6;
 
 require 5.005;
 use strict;
-use vars qw(@ISA @EXPORT_OK @EXPORT %EXPORT_TAGS $VERSION);
+use vars qw(@ISA $VERSION);
 
-use IO::Socket;
+use IO::Socket::INET6;
+use Socket;
+use Socket6;
+use Data::Dumper;
+use XSLoader;
+
+use constant IP_MULTICAST_TTL => 10;
+
+
 use Carp 'croak';
-require Exporter;
-require DynaLoader;
 eval <<END; # or warn "IO::Interface module not installed; Cannot use interface names.\n";
   use IO::Interface 0.94 'IFF_MULTICAST';
 END
 
-my @functions = qw(mcast_add mcast_drop mcast_if mcast_loopback 
-		   mcast_ttl mcast_dest mcast_send);
-
-%EXPORT_TAGS = ('all'       => \@functions,
-		'functions' => \@functions);
-@EXPORT = ( );
-@EXPORT_OK = @{ $EXPORT_TAGS{'all'} };
-
-@ISA = qw(Exporter DynaLoader IO::Socket::INET);
-$VERSION = '1.04';
+@ISA = qw(IO::Socket::INET6);
+$VERSION = '0.01';
 
 my $IP = '\d+\.\d+\.\d+\.\d+';
 
-sub import {
-  Socket->export_to_level(1,@_);
-  IO::Socket::Multicast6->export_to_level(1,@_);
-}
+
+
+
+
+XSLoader::load('IO::Socket::Multicast6', $VERSION);
+
 
 sub new {
   my $class = shift;
@@ -58,16 +58,16 @@ sub mcast_drop {
   return $sock->_mcast_drop($group,$interface);
 }
 
+
 sub mcast_if {
-  my $sock = shift;
-
-  my $previous = $sock->_mcast_if;
-  $previous = $sock->addr_to_interface($previous) 
-    if $sock->can('addr_to_interface');
-  return $previous unless @_;
-
-  my $interface = get_if_addr($sock,shift);
-  return $sock->_mcast_if($interface) ? $previous : undef;
+	my $sock = shift;
+	
+	my $previous = $sock->_mcast_if;
+	$previous = $sock->addr_to_interface($previous) if $sock->can('addr_to_interface');
+	return $previous unless @_;
+	
+	my $interface = get_if_addr($sock,shift);
+	return $sock->_mcast_if($interface) ? $previous : undef;
 }
 
 sub get_if_addr {
@@ -84,23 +84,46 @@ sub get_if_addr {
   return $addr;
 }
 
+sub mcast_ttl {
+	my $sock = shift;
+	
+	my $prev = $sock->_get_mcast_ttl( $sock->sockdomain() );
+	if (my $ttl = shift) {
+		$sock->_set_mcast_ttl( $sock->sockdomain(), $ttl );
+	}
+	
+	return $prev;
+}
+
+sub mcast_loopback {
+	my $sock = shift;
+	
+	my $prev = $sock->_get_mcast_loopback( $sock->sockdomain() );
+	
+	return $prev;
+}
+
+
 sub mcast_dest {
-  my $sock = shift;
-  my $prev = ${*$sock}{'io_socket_mcast_dest'};
-  if (my $dest = shift) {
-    $dest = sockaddr_in($2,inet_aton($1)) if $dest =~ /^($IP):(\d+)$/;
-    croak "invalid destination address" unless length($dest) == 16;
-    ${*$sock}{'io_socket_mcast_dest'} = $dest;
-  }
-  return $prev;
+	my $sock = shift;
+	my $prev = ${*$sock}{'io_socket_mcast_dest'};
+	if (my $dest = shift) {
+		$dest = sockaddr_in($2,inet_aton($1)) if ($dest =~ /^($IP):(\d+)$/);
+		croak "invalid destination address" unless length($dest) == 16;
+		${*$sock}{'io_socket_mcast_dest'} = $dest;
+	}
+	return $prev;
 }
 
 sub mcast_send {
-  my $sock = shift;
-  my $data = shift || croak 'usage: $sock->mcast_send($data [,$address])';
-  $sock->mcast_dest(shift) if @_;
-  my $dest = $sock->mcast_dest || croak "no destination specified with mcast_send() or mcast_dest()";
-  return send($sock,$data,0,$dest);
+	my $sock = shift;
+	my $data = shift || croak 'usage: $sock->mcast_send($data [,$address])';
+	$sock->mcast_dest(shift) if @_;
+	my $dest = $sock->mcast_dest || croak "no destination specified with mcast_send() or mcast_dest()";
+	
+	my ($port, $addr) = sockaddr_in($dest);
+	print "going to send '$data' to ".inet_ntoa($addr).":$port using $sock\n";
+	return send($sock,$data,0,$dest);
 }
 
 bootstrap IO::Socket::Multicast6 $VERSION;
