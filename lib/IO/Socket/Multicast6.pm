@@ -261,7 +261,7 @@ IO::Socket::Multicast6 - Send and receive IPv4 and IPv6 multicast messages
 
 =head1 DESCRIPTION
 
-The IO::Socket::Multicast6 module subclasses IO::Socket::INET to enable
+The IO::Socket::Multicast6 module subclasses IO::Socket::INET6 to enable
 you to manipulate multicast groups.  With this module (and an
 operating system that supports multicasting), you will be able to
 receive incoming multicast transmissions and generate your own

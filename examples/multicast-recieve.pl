@@ -7,10 +7,9 @@ use IO::Socket::Multicast6;
 use constant GROUP => 'ff15::9023';
 use constant PORT  => '2000';
 
-my $sock = IO::Socket::Multicast6->new(
+my $sock = new IO::Socket::Multicast6(
 					LocalAddr=>GROUP,
 					LocalPort=>PORT,
-					Domain=>AF_INET6,
 					ReuseAddr=>1);
 					
 $sock->mcast_add(GROUP) || die "Couldn't join group: $!\n";
