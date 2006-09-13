@@ -11,9 +11,6 @@ my $sock = new IO::Socket::Multicast6(
 					LocalPort=>PORT,
 					ReuseAddr=>1);
 
-
-print "Socket's domain: ".$sock->sockdomain()."\n";
-
 while (1) {
 	my $data;
 	next unless $sock->recv($data,1024);

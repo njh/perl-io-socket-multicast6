@@ -14,20 +14,6 @@
 MODULE = IO::Socket::Multicast6	PACKAGE = IO::Socket::Multicast6
 
 
-void
-_mcast_add(sock,mcast_group,interface_addr="")
-	PerlIO* sock
-	char* mcast_group
-	char* interface_addr
-  PROTOTYPE: $$;$
-  PREINIT:
-	int fd;
-	struct ip_mreq mreq;
-  CODE:
-	printf("mcast_group=%s, interface_addr=%s\n", mcast_group, interface_addr );
-	XSRETURN_EMPTY;
-
-
 int
 _get_mcast_ttl(sock,family)
 	PerlIO* sock
@@ -54,6 +40,7 @@ _get_mcast_ttl(sock,family)
    	
   OUTPUT:
 	RETVAL
+
 
 void
 _set_mcast_ttl(sock,family,ttl)
@@ -103,4 +90,26 @@ _get_mcast_loopback(sock,family)
    	
   OUTPUT:
 	RETVAL
+
+
+void
+_set_mcast_loopback(sock,family,loopback)
+	PerlIO* sock
+	int family
+	int loopback;
+  PREINIT:
+	int fd;
+  CODE:
+	fd = PerlIO_fileno(sock);
+
+	if (family==AF_INET) {
+		if (setsockopt(fd,IPPROTO_IP,IP_MULTICAST_LOOP,(void*)&loopback,sizeof(loopback)) < 0)
+	 		XSRETURN_UNDEF;
+	} else if (family==AF_INET6) {
+		if (setsockopt(fd,IPPROTO_IPV6,IPV6_MULTICAST_LOOP,(void*)&loopback,sizeof(loopback)) < 0)
+	 		XSRETURN_UNDEF;
+	} else {
+		croak("_set_mcast_loopback failed, unsupported socket family: %d", family );
+	}
+
 

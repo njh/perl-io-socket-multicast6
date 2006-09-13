@@ -10,12 +10,7 @@ my $sock = new IO::Socket::Multicast6(
 					Domain=>AF_INET,
 					ReuseAddr=>1);
 
-print "Result of set mcast_ttl: ".$sock->mcast_ttl(5)."\n";
-		
 print "Socket's domain: ".$sock->sockdomain()."\n";
-print "Socket's multicast ttl: ".$sock->mcast_ttl()."\n";
-print "Socket's multicast loopback: ".$sock->mcast_loopback()."\n";
-
 
 while (1) {
   my $message = localtime();
