@@ -4,21 +4,21 @@ use strict;
 use lib '../blib/lib','../blib/arch';
 use IO::Socket::Multicast6;
 
-use constant DESTINATION => '127.0.0.1:2000';
 
 my $sock = new IO::Socket::Multicast6(
-					Domain=>AF_INET,
+					PeerAddr=>'ff15::9023',
+					PeerPort=>2000,
+					Domain=>AF_INET6,
 					ReuseAddr=>1);
 
-print "Socket's domain: ".$sock->sockdomain()."\n";
-print "Result of set mcast_ttl: ".$sock->mcast_ttl(5)."\n";
-print "Socket's multicast ttl: ".$sock->mcast_ttl()."\n";
-print "Socket's multicast loopback: ".$sock->mcast_loopback()."\n";
 
+$sock->mcast_ttl(5) || die "Failed to set TTL: $!";
+$sock->mcast_loopback(1) || die "Failed to enable loopback: $!";
 
 while (1) {
-  my $message = localtime();
-  $sock->mcast_send($message,DESTINATION) || die "Couldn't send: $!";
+	my $message = localtime();
+	$sock->send($message) || die "Couldn't send: $!";
+	print "Sent: $message\n";
 } continue {
-  sleep 5;
+	sleep 4;
 }

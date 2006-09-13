@@ -8,11 +8,11 @@ my $build = Module::Build->new
 		'Module::Build' => '0.20'
 	},
 	requires => {
-		'perl'	=> '5.6.1',
-		'PerlIO' => 0,
-		'IO::Interface' => '0.94',
-		'IO::Socket::INET6' => '2.51',
-		'Test' => '1.00',
+		'perl'				=> '5.6.1',
+		'Test::More'		=> 0,
+		'IO::Interface'		=> '0.94',
+		'Socket::Multicast6'=> '0.01',
+		'IO::Socket::INET6'	=> '2.51',
 	},
 	
 	create_makefile_pl => 'passthrough',
