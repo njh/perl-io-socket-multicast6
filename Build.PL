@@ -1,5 +1,20 @@
 use Module::Build;
 
+my $class = Module::Build->subclass(code => <<'EOF');
+	sub ACTION_dist {
+		my $self = shift;
+		eval {
+			use Pod::Text;
+			print "Creating the README file.\n";
+			my $parser = Pod::Text->new();
+			$parser->parse_from_file('lib/IO/Socket/Multicast6.pm', 'README');
+		};
+		$self->SUPER::ACTION_dist(@_);
+	}
+EOF
+
+
+#my $build = $class->new
 my $build = Module::Build->new
 (
 	module_name => 'IO::Socket::Multicast6',
