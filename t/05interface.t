@@ -20,13 +20,13 @@ foreach my $if (@interfaces) {
 	next unless ($if->is_running);
 	next unless ($if->is_multicast);
 	
+	# Found multicast enabled interface
 	$iface = $if->name();
-	diag( "Found multicast enabled interface: $iface" );
 	last;
 }
 
 unless (defined $iface) {
-	BAIL_OUT( "Failed to find multicast enabled interface." );
+	die( "Failed to find multicast enabled interface." );
 }
 
 
