@@ -14,8 +14,7 @@ my $class = Module::Build->subclass(code => <<'EOF');
 EOF
 
 
-#my $build = $class->new
-my $build = Module::Build->new
+my $build = $class->new
 (
 	module_name => 'IO::Socket::Multicast6',
 	license => 'perl',
