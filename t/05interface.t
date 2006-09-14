@@ -3,7 +3,7 @@
 #
 
 use strict;
-use Test::More tests => 7;
+use Test::More tests => 10;
 
 
 # load IO::Socket::Multicast6 and IO::Interface
@@ -17,11 +17,12 @@ BEGIN {
 my $iface = undef;
 my @interfaces = IO::Interface::Simple->interfaces;
 foreach my $if (@interfaces) {
-	if ($if->is_multicast) {
-		$iface = $if->name();
-		diag( "Found multicast enabled interface: $iface" );
-		last;
-	}
+	next unless ($if->is_running);
+	next unless ($if->is_multicast);
+	
+	$iface = $if->name();
+	diag( "Found multicast enabled interface: $iface" );
+	last;
 }
 
 unless (defined $iface) {
