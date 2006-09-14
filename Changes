@@ -1,7 +1,6 @@
 Revision history for Perl extension IO::Socket::Multicast6
 
 
-
 0.01  Tue Aug 15 15:40:30 BST 2006
 	- original version based on IO::Socket::Multicast v1.04
 

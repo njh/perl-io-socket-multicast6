@@ -1,14 +1,13 @@
 package IO::Socket::Multicast6;
 
-require 5.005;
 use strict;
 use vars qw(@ISA $VERSION);
 
 use IO::Socket::INET6;
-use IO::Interface 0.94 'IFF_MULTICAST';
-use Socket;
-use Socket6;
-use Socket::Multicast6 qw/:all/;
+use IO::Interface::Simple;
+use Socket::Multicast6 qw/ :all /;
+use Socket6 qw/ AF_INET6 IPPROTO_IP IPPROTO_IPV6 inet_pton inet_ntop /;
+use Socket qw/ AF_INET /;
 use Carp 'croak';
 
 
@@ -42,14 +41,14 @@ sub mcast_add {
 	my $interface = shift;
 	
 	if ($sock->sockdomain() == AF_INET) {
-		my $if_addr = $sock->get_if_ipv4addr($interface);
+		my $if_addr = _get_if_ipv4addr($interface);
 		my $ip_mreq = pack_ip_mreq( inet_pton( AF_INET, $group ),
 									inet_pton( AF_INET, $if_addr ) );
 		
 		setsockopt($sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, $ip_mreq )
 		or croak "Could not set IP_ADD_MEMBERSHIP socket option: $!";
 	} elsif ($sock->sockdomain() == AF_INET6) {
-		my $if_index = $sock->get_if_index($interface);
+		my $if_index = _get_if_index($interface);
 		my $ipv6_mreq = pack_ipv6_mreq( inet_pton( AF_INET6, $group ),
 										$if_index );
 		
@@ -70,14 +69,14 @@ sub mcast_drop {
 	my $interface = shift;
 	
 	if ($sock->sockdomain() == AF_INET) {
-		my $if_addr = $sock->get_if_ipv4addr($interface);
+		my $if_addr = _get_if_ipv4addr($interface);
 		my $ip_mreq = pack_ip_mreq( inet_pton( AF_INET, $group ),
 									inet_pton( AF_INET, $if_addr ) );
 		
 		setsockopt($sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, $ip_mreq )
 		or croak "Could not set IP_ADD_MEMBERSHIP socket option: $!";
 	} elsif ($sock->sockdomain() == AF_INET6) {
-		my $if_index = $sock->get_if_index($interface);
+		my $if_index = _get_if_index($interface);
 		my $ipv6_mreq = pack_ipv6_mreq( inet_pton( AF_INET6, $group ),
 										$if_index );
 		
@@ -86,6 +85,7 @@ sub mcast_drop {
 	} else {
 		croak("mcast_add failed, unsupported socket family." );
 	}
+	
 	# Success
 	return 1;
 }
@@ -135,6 +135,7 @@ sub mcast_loopback {
 		my $packed = getsockopt($sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP)
 		or croak "Could not get IPV6_MULTICAST_LOOP socket option: $!";
 		$prev=unpack("I", $packed);
+
 		if (my $loopback = shift) {
 			setsockopt($sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, pack("I", $loopback ) )
 			or croak "Could not set IPV6_MULTICAST_LOOP socket option: $!";
@@ -147,53 +148,37 @@ sub mcast_loopback {
 }
 
 
-#sub mcast_if {
-#	my $sock = shift;
-#	
-#	my $previous = $sock->_mcast_if;
-#	$previous = $sock->addr_to_interface($previous) if $sock->can('addr_to_interface');
-#	return $previous unless @_;
-#	
-#	my $interface = get_if_addr($sock,shift);
-#	return $sock->_mcast_if($interface) ? $previous : undef;
-#}
-
-## Returns the IPv4 address of an interface
-#
-sub get_if_ipv4addr {
+sub mcast_if {
 	my $sock = shift;
-	my ($interface) = @_;
 	
-	return '0.0.0.0' unless (defined $interface);
-	return '0.0.0.0' if ($interface eq 'any');
-	return $interface if ($interface =~ /^$IPv4$/);
-	
-	croak "unknown or unconfigured interface $interface"
-	unless my $addr = $sock->if_addr($interface);
-	croak "interface is not multicast capable"
-	unless ($sock->if_flags($interface) & IFF_MULTICAST);
+	my $prev = undef;
+	if ($sock->sockdomain() == AF_INET) {
+		my $packed = getsockopt($sock, IPPROTO_IP, IP_MULTICAST_IF)
+		or croak "Could not get IP_MULTICAST_IF socket option: $!";
+		$prev=$sock->addr_to_interface( inet_ntop( AF_INET, $packed ) );
 
-	return $addr;
-}
+		if (my $interface = shift) {
+			my $if_addr = _get_if_ipv4addr($interface);
+			setsockopt($sock, IPPROTO_IP, IP_MULTICAST_IF, inet_pton( AF_INET, $if_addr ) )
+			or croak "Could not set IP_MULTICAST_IF socket option: $!";
+		}
+	} elsif ($sock->sockdomain() == AF_INET6) {
+		my $packed = getsockopt($sock, IPPROTO_IPV6, IPV6_MULTICAST_IF)
+		or croak "Could not get IPV6_MULTICAST_IF socket option: $!";
+		$prev = unpack("I", $packed);
+		if ($prev==0) { $prev='any'; }
+		else { $prev = $sock->if_indextoname($prev); }
 
-
-## Returns the index of an interface
-#
-sub get_if_index {
-	my $sock = shift;
-	my ($interface) = @_;
-	
-	if (!defined $interface) {
-		return 0;
-	} elsif ($interface =~ /^\d+$/) {
-		return $interface;
-	} elsif ($interface =~ /^any$/i) {
-		return 0;
+		if (my $interface = shift) {
+			my $if_index = _get_if_index($interface);
+			setsockopt($sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, pack("I", $if_index ) )
+			or croak "Could not set IPV6_MULTICAST_IF socket option: $!";
+		}
 	} else {
-		# Convert interface name to interface number
-		warn "Don't currently have interface index support.";
-		return 0;
+		croak("mcast_if failed, unsupported socket family." );
 	}
+
+	return $prev;
 }
 
 
@@ -222,6 +207,41 @@ sub get_if_index {
 #}
 
 
+## Returns the IPv4 address of an interface
+#
+sub _get_if_ipv4addr {
+	my ($interface) = @_;
+	
+	return '0.0.0.0' unless (defined $interface);
+	return '0.0.0.0' if ($interface eq 'any');
+	return $interface if ($interface =~ /^$IPv4$/);
+	
+	my $if = new IO::Interface::Simple( $interface );
+	croak "Unknown interface $interface" unless (defined $if);
+	croak "Interface '$interface' is not multicast capable" unless ($if->is_multicast());
+	my $address = $if->address();
+	croak "Interface '$interface' does not have an IPv4 address" unless (defined $address);
+	return $address;
+}
+
+
+## Returns the index of an interface
+#
+sub _get_if_index {
+	my ($interface) = @_;
+	
+	return 0 unless defined $interface;
+	return $interface if ($interface =~ /^\d+$/);
+	return 0 if ($interface =~ /^any$/i);
+
+	my $if = new IO::Interface::Simple( $interface );
+	croak "Unknown interface $interface" unless (defined $if);
+	croak "Interface '$interface' is not multicast capable" unless ($if->is_multicast());
+	my $index = $if->index();
+	croak "Can't get index of interface '$interface'." unless (defined $index);
+	return $index;
+}
+
 
 1;
 __END__
@@ -234,11 +254,14 @@ IO::Socket::Multicast6 - Send and receive IPv4 and IPv6 multicast messages
 
   use IO::Socket::Multicast6;
 
-  # create a new UDP socket ready to read datagrams on port 1100
-  my $s = IO::Socket::Multicast6->new(LocalPort=>1100);
+  # create a new IPv6 UDP socket ready to read datagrams on port 1100
+  my $s = IO::Socket::Multicast6->new(Domain=>AF_INET6, LocalPort=>1100);
 
-  # Add a multicast group
-  $s->mcast_add('225.0.1.1');
+  # Add an IPv6 multicast group
+  $s->mcast_add('FF15::0561');
+
+  # create a new IPv4 UDP socket ready to read datagrams on port 1100
+  my $s = IO::Socket::Multicast6->new(Domain=>AF_INET, LocalPort=>1100);
 
   # Add a multicast group to eth0 device
   $s->mcast_add('225.0.0.2','eth0');
@@ -263,15 +286,30 @@ IO::Socket::Multicast6 - Send and receive IPv4 and IPv6 multicast messages
   $s->mcast_set('225.0.0.2:1200');
   $s->mcast_send('hello again!');
 
+
 =head1 DESCRIPTION
 
 The IO::Socket::Multicast6 module subclasses IO::Socket::INET6 to enable
-you to manipulate multicast groups.  With this module (and an
-operating system that supports multicasting), you will be able to
+you to manipulate multicast groups.  With this module you will be able to
 receive incoming multicast transmissions and generate your own
 outgoing multicast packets.
 
-This module requires IO::Interface version 0.94 or higher.
+This module uses the same API as IO::Socket::Multicast, but with added 
+support for IPv6 (IPv4 is still supported). Unlike IO::Socket::Multicast,
+this is a pure-perl module.
+
+
+=head2 DEPENDENCIES
+
+This module depends on a number of other modules:
+
+  Socket6 version 0.19 or higher.
+  IO::Socket::INET6 version 2.51 or higher.
+  IO::Interface version 1.01 or higher.
+  Socket::Multicast6 0.01 or higher.
+
+Your operating system must have IPv6 and Multicast support.
+
 
 =head2 INTRODUCTION
 
@@ -279,8 +317,9 @@ Multicasting is designed for streaming multimedia applications and for
 conferencing systems in which one transmitting machines needs to
 distribute data to a large number of clients.
 
-IP addresses in the range 224.0.0.0 and 239.255.255.255 are reserved
-for multicasting.  These addresses do not correspond to individual
+IPv4 addresses in the range 224.0.0.0 and 239.255.255.255 are reserved
+for multicasting.  IPv6 multicast addresses start with the prefix FF.
+These addresses do not correspond to individual
 machines, but to multicast groups.  Messages sent to these addresses
 will be delivered to a potentially large number of machines that have
 registered their interest in receiving transmissions on these groups.
@@ -463,27 +502,32 @@ default destination for calls to send().
 
 The following is an example of a multicast server.  Every 10 seconds
 it transmits the current time and the list of logged-in users to the
-local network using multicast group 226.1.1.2, port 2000 (these are
-chosen arbitrarily).
+local network using multicast group FF15::0561, port 2000 (these are
+chosen arbitrarily, the FF15:: is a Transient, Site Local prefix).
 
  #!/usr/bin/perl
  # server
  use strict;
- use IO::Socket::Multicast;
+ use IO::Socket::Multicast6;
 
- use constant DESTINATION => '226.1.1.2:2000'; 
- my $sock = IO::Socket::Multicast->new(Proto=>'udp',PeerAddr=>DESTINATION);
+ use constant GROUP => 'FF15::0561';
+ use constant PORT  => '2000';
+ 
+ my $sock = IO::Socket::Multicast->new(
+                    Proto=>'udp',
+                    Domain=>AF_INET6,
+                    PeerAddr=>GROUP,
+                    PeerPort=>PORT);
 
  while (1) {
-   my $message = localtime;
-   $message .= "\n" . `who`;
-   $sock->send($message) || die "Couldn't send: $!";
+    my $message = localtime();
+    $sock->send($message) || die "Couldn't send: $!";
  } continue {
-   sleep 10;
+    sleep 4;
  }
 
 This is the corresponding client.  It listens for transmissions on
-group 226.1.1.2, port 2000, and echoes the messages to standard
+group FF15::0561, port 2000, and echoes the messages to standard
 output.
 
  #!/usr/bin/perl
@@ -492,24 +536,23 @@ output.
  use strict;
  use IO::Socket::Multicast6;
 
- use constant GROUP => '226.1.1.2';
+ use constant GROUP => 'FF15::0561';
  use constant PORT  => '2000';
 
- my $sock = IO::Socket::Multicast6->new(Proto=>'udp',LocalPort=>PORT);
+ my $sock = IO::Socket::Multicast6->new(
+                    Proto=>'udp',
+                    Domain=>AF_INET6,
+                    LocalAddr=>GROUP,
+                    LocalPort=>PORT);
+                    
  $sock->mcast_add(GROUP) || die "Couldn't set group: $!\n";
 
  while (1) {
-   my $data;
-   next unless $sock->recv($data,1024);
-   print $data;
+    my $data;
+    next unless $sock->recv($data,1024);
+    print "$data\n";
  }
 
-=head2 EXPORT
-
-None by default.  However, if you wish to call mcast_add(),
-mcast_drop(), mcast_if(), mcast_loopback(), mcast_ttl, mcast_dest()
-and mcast_send() as functions you may import them explicitly on the
-B<use> line or by importing the tag ":functions".
 
 =head2 BUGS
 
@@ -519,12 +562,17 @@ in the implementation of the multicast socket options.
 
 =head1 AUTHOR
 
-Lincoln Stein, lstein@cshl.org.
+Based on L<IO::Socket::Multicast> by Lincoln Stein, lstein@cshl.org.
+
+IO::Socket::Multicast6 by Nicholas J Humfrey, E<lt>njh@cpan.orgE<gt>
+
 
 This module is distributed under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
-perl(1), IO::Socket(3), IO::Socket::INET(3).
+L<http://www.ietf.org/rfc/rfc2553.txt>
+
+perl(1), IO::Socket(3), Socket::Multicast6(3), IO::Socket::INET6(3).
 
 =cut
