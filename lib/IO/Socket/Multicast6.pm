@@ -201,8 +201,6 @@ sub mcast_if {
 #	$sock->mcast_dest(shift) if @_;
 #	my $dest = $sock->mcast_dest || croak "no destination specified with mcast_send() or mcast_dest()";
 #	
-#	my ($port, $addr) = sockaddr_in($dest);
-#	print "going to send '$data' to ".inet_ntoa($addr).":$port using $sock\n";
 #	return send($sock,$data,0,$dest);
 #}
 
@@ -255,22 +253,25 @@ IO::Socket::Multicast6 - Send and receive IPv4 and IPv6 multicast messages
   use IO::Socket::Multicast6;
 
   # create a new IPv6 UDP socket ready to read datagrams on port 1100
-  my $s = IO::Socket::Multicast6->new(Domain=>AF_INET6, LocalPort=>1100);
+  my $s = IO::Socket::Multicast6->new(
+  				Domain=>AF_INET6,
+  				LocalPort=>1100);
 
   # Add an IPv6 multicast group
   $s->mcast_add('FF15::0561');
-
-  # create a new IPv4 UDP socket ready to read datagrams on port 1100
-  my $s = IO::Socket::Multicast6->new(Domain=>AF_INET, LocalPort=>1100);
-
-  # Add a multicast group to eth0 device
-  $s->mcast_add('225.0.0.2','eth0');
 
   # now receive some multicast data
   $s->recv($data,1024);
 
   # Drop a multicast group
-  $s->mcast_drop('225.0.0.1');
+  $s->mcast_drop('FF15::0561');
+
+
+  # create a new IPv4 UDP socket ready to send datagrams to port 1100
+  my $s = IO::Socket::Multicast6->new(
+  				Domain=>AF_INET,
+  				PeerDest=>'225.0.0.1',
+  				PeerPort=>1100);
 
   # Set outgoing interface to eth0
   $s->mcast_if('eth0');
@@ -281,10 +282,9 @@ IO::Socket::Multicast6 - Send and receive IPv4 and IPv6 multicast messages
   # Turn off loopbacking
   $s->mcast_loopback(0);
 
-  # Multicast a message to group 225.0.0.1
-  $s->mcast_send('hello world!','225.0.0.1:1200');
-  $s->mcast_set('225.0.0.2:1200');
-  $s->mcast_send('hello again!');
+  # Multicast a message to group
+  $s->send( 'hello world!' );
+
 
 
 =head1 DESCRIPTION
@@ -336,10 +336,7 @@ subscribed groups using the selected port number.
 
 To send transmissions B<to> a multicast group, you can use the
 standard send() method to send messages to the multicast group and
-port of your choice.  The mcast_set() and mcast_send() methods are
-provided as convenience functions.  Mcast_set() will set a default
-multicast destination for messages which you then send with
-mcast_send().
+port of your choice. 
 
 To set the number of hops (routers) that outgoing multicast messages
 will cross, call mcast_ttl().  To activate or deactivate the looping
@@ -456,45 +453,6 @@ interface's dotted IP address.
 B<NOTE>: To set the interface used for B<incoming> multicasts, use the
 mcast_add() method.
 
-=item $dest = $socket->mcast_dest
-
-=item $previous = $socket->mcast_dest($new)
-
-The mcast_dest() method is a convenience function that allows you to
-set the default destination group for outgoing multicasts.  Called
-without arguments, returns the current destination as a packed binary
-sockaddr_in data structure.  Called with a new destination address,
-the method sets the default destination and returns the previous one,
-if any.
-
-Destination addresses may be provided as packed sockaddr_in
-structures, or in the form "XX.XX.XX.XX:YY" where the first part is
-the IP address, and the second the port number.
-
-=item $bytes = $socket->mcast_send($data [,$dest])
-
-Mcast_send() is a convenience function that simplifies the sending of
-multicast messages.  C<$data> is the message contents, and C<$dest> is
-an optional destination group.  You can use either the dotted IP form
-of the destination address and its port number, or a packed
-sockaddr_in structure.  If the destination is not supplied, it will
-default to the most recent value set in mcast_dest() or a previous
-call to mcast_send().
-
-The method returns the number of bytes successfully queued for
-delivery.
-
-As a side-effect, the method will call mcast_dest() to remember the
-destination address.
-
-Example:
-
-  $socket->mcast_send('Hi there group members!','225.0.1.1:1900') || die;
-  $socket->mcast_send("How's the weather?") || die;
-
-Note that you may still call IO::Socket::INET->new() with a
-B<PeerAddr>, and IO::Socket::INET will perform a connect(), creating a
-default destination for calls to send().
 
 =back
 
@@ -506,7 +464,7 @@ local network using multicast group FF15::0561, port 2000 (these are
 chosen arbitrarily, the FF15:: is a Transient, Site Local prefix).
 
  #!/usr/bin/perl
- # server
+ # server (transmitter)
  use strict;
  use IO::Socket::Multicast6;
 
@@ -526,12 +484,13 @@ chosen arbitrarily, the FF15:: is a Transient, Site Local prefix).
     sleep 4;
  }
 
+
 This is the corresponding client.  It listens for transmissions on
 group FF15::0561, port 2000, and echoes the messages to standard
 output.
 
  #!/usr/bin/perl
- # client
+ # client (receiver)
 
  use strict;
  use IO::Socket::Multicast6;
@@ -556,18 +515,22 @@ output.
 
 =head2 BUGS
 
+The mcast_dest() and mcast_send() methods that were in
+IO::Socket::Multicast are currently unimplemented.
+
 The mcast_if(), mcast_ttl() and mcast_loopback() methods will cause a
 crash on versions of Linux earlier than 2.2.0 because of a kernel bug
 in the implementation of the multicast socket options.
+
 
 =head1 AUTHOR
 
 Based on L<IO::Socket::Multicast> by Lincoln Stein, lstein@cshl.org.
 
-IO::Socket::Multicast6 by Nicholas J Humfrey, E<lt>njh@cpan.orgE<gt>
-
+IO::Socket::Multicast6 by Nicholas J Humfrey, E<lt>njh@cpan.orgE<gt>.
 
 This module is distributed under the same terms as Perl itself.
+
 
 =head1 SEE ALSO
 
