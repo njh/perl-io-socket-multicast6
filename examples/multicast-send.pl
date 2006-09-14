@@ -4,13 +4,16 @@ use strict;
 use lib '../blib/lib','../blib/arch';
 use IO::Socket::Multicast6;
 
-use constant GROUP => 'ff15::9023';
+#use constant GROUP => 'ff15::9023';
+use constant GROUP => '239.255.30.29';
 use constant PORT  => '2000';
 
 my $sock = new IO::Socket::Multicast6(
 					PeerAddr=>GROUP,
 					PeerPort=>PORT,
-					ReuseAddr=>1);
+					Domain=>AF_INET,
+					ReuseAddr=>1)
+|| die "Failed to create multicast socket: $!";
 
 $sock->mcast_ttl(5) || die "Failed to set TTL: $!";
 $sock->mcast_loopback(1) || die "Failed to enable loopback: $!";

@@ -43,13 +43,15 @@ sub mcast_add {
 	
 	if ($sock->sockdomain() == AF_INET) {
 		my $if_addr = $sock->get_if_ipv4addr($interface);
-		my $ip_mreq = pack_ip_mreq( inet_aton( $group ), inet_aton( $if_addr ) );
+		my $ip_mreq = pack_ip_mreq( inet_pton( AF_INET, $group ),
+									inet_pton( AF_INET, $if_addr ) );
 		
 		setsockopt($sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, $ip_mreq )
 		or croak "Could not set IP_ADD_MEMBERSHIP socket option: $!";
 	} elsif ($sock->sockdomain() == AF_INET6) {
 		my $if_index = $sock->get_if_index($interface);
-		my $ipv6_mreq = pack_ipv6_mreq( inet_pton( AF_INET6, $group ), $if_index );
+		my $ipv6_mreq = pack_ipv6_mreq( inet_pton( AF_INET6, $group ),
+										$if_index );
 		
 		setsockopt($sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, $ipv6_mreq )
 		or croak "Could not set IPV6_JOIN_GROUP socket option: $!";
@@ -69,13 +71,15 @@ sub mcast_drop {
 	
 	if ($sock->sockdomain() == AF_INET) {
 		my $if_addr = $sock->get_if_ipv4addr($interface);
-		my $ip_mreq = pack_ip_mreq( inet_aton( $group ), inet_aton( $if_addr ) );
+		my $ip_mreq = pack_ip_mreq( inet_pton( AF_INET, $group ),
+									inet_pton( AF_INET, $if_addr ) );
 		
 		setsockopt($sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, $ip_mreq )
 		or croak "Could not set IP_ADD_MEMBERSHIP socket option: $!";
 	} elsif ($sock->sockdomain() == AF_INET6) {
 		my $if_index = $sock->get_if_index($interface);
-		my $ipv6_mreq = pack_ipv6_mreq( inet_pton( AF_INET6, $group ), $if_index );
+		my $ipv6_mreq = pack_ipv6_mreq( inet_pton( AF_INET6, $group ),
+										$if_index );
 		
 		setsockopt($sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, $ipv6_mreq )
 		or croak "Could not set IPV6_LEAVE_GROUP socket option: $!";
