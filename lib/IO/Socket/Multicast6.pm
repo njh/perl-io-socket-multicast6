@@ -14,7 +14,7 @@ use Carp 'croak';
 
 
 @ISA = qw(IO::Socket::INET6);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 
 # Regular expressions to match IP addresses
