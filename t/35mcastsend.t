@@ -13,9 +13,7 @@ BEGIN { use_ok( 'IO::Socket::Multicast6' ); }
 
 
 # Create an IPv4 multicast socket
-my $sock4 = new IO::Socket::Multicast6(
-						Domain => AF_INET,
-						ReuseAddr=>1);
+my $sock4 = new IO::Socket::Multicast6( Domain => AF_INET );
 ok( $sock4, "Create IPv4 multicast socket" );
 
 
@@ -33,18 +31,16 @@ is($sock4->mcast_send( 'Hello World!' ), 12, "Sent 12 bytes on IPv4 socket." );
 
 
 # Create an IPv6 multicast socket
-my $sock6 = new IO::Socket::Multicast6(
-						Domain => AF_INET6,
-						ReuseAddr=>1);
+my $sock6 = new IO::Socket::Multicast6( Domain => AF_INET6 );
 ok( $sock6, "Create IPv6 multicast socket" );
 
 $sock6->mcast_dest( '[ff15::5042]:2000' );
-ok( defined $sock4->mcast_dest(), "Combined IPv6 destination address and port" );
+ok( defined $sock6->mcast_dest(), "Combined IPv6 destination address and port" );
 
 $sock6->mcast_dest( 'ff15::5042', 2000 );
-ok( defined $sock4->mcast_dest(), "Separate IPv6 destination address and port" );
+ok( defined $sock6->mcast_dest(), "Separate IPv6 destination address and port" );
 
 $sock6->mcast_dest( pack_sockaddr_in6(2000,inet_pton(AF_INET6, 'ff15::5042')) );
-ok( defined $sock4->mcast_dest(), "Packed IPv6 destination address and port" );
+ok( defined $sock6->mcast_dest(), "Packed IPv6 destination address and port" );
 
 is($sock6->mcast_send( 'Hello World!' ), 12, "Sent 12 bytes on IPv6 socket." );

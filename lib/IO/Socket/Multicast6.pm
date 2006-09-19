@@ -32,6 +32,7 @@ sub new {
 sub configure {
 	my($self,$arg) = @_;
 	$arg->{Proto} ||= 'udp';
+	$arg->{ReuseAddr} ||= 1;
 	$self->SUPER::configure($arg);
 }
 
