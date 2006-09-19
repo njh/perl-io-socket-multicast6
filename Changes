@@ -1,6 +1,9 @@
 Revision history for Perl extension IO::Socket::Multicast6
 
+0.02  Tue Sep 19 14:25:15 BST 2006
+    - added support for mcast_send and mcast_dest
+    - added send tests
+    - Resuse_Addr is now enabled by default
 
 0.01  Tue Aug 15 15:40:30 BST 2006
 	- original version based on IO::Socket::Multicast v1.04
-

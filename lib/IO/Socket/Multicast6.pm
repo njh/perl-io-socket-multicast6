@@ -6,14 +6,15 @@ use vars qw(@ISA $VERSION);
 use IO::Socket::INET6;
 use IO::Interface::Simple;
 use Socket::Multicast6 qw/ :all /;
-use Socket6 qw/ AF_INET6 IPPROTO_IP IPPROTO_IPV6 inet_pton inet_ntop /;
-use Socket qw/ AF_INET /;
+use Socket6 qw/ AF_INET6 IPPROTO_IP IPPROTO_IPV6 
+                inet_pton inet_ntop pack_sockaddr_in6/;
+use Socket qw/ AF_INET sockaddr_family pack_sockaddr_in /;
 use Carp 'croak';
 
 
 
 @ISA = qw(IO::Socket::INET6);
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 
 # Regular expressions to match IP addresses
@@ -31,6 +32,7 @@ sub new {
 sub configure {
 	my($self,$arg) = @_;
 	$arg->{Proto} ||= 'udp';
+	$arg->{ReuseAddr} ||= 1;
 	$self->SUPER::configure($arg);
 }
 
@@ -182,27 +184,50 @@ sub mcast_if {
 }
 
 
-## Still needs to be IPv6 enabled:
-#
-#sub mcast_dest {
-#	my $sock = shift;
-#	my $prev = ${*$sock}{'io_socket_mcast_dest'};
-#	if (my $dest = shift) {
-#		$dest = sockaddr_in($2,inet_aton($1)) if ($dest =~ /^($IP):(\d+)$/);
-#		croak "invalid destination address" unless length($dest) == 16;
-#		${*$sock}{'io_socket_mcast_dest'} = $dest;
-#	}
-#	return $prev;
-#}
-#
-#sub mcast_send {
-#	my $sock = shift;
-#	my $data = shift || croak 'usage: $sock->mcast_send($data [,$address])';
-#	$sock->mcast_dest(shift) if @_;
-#	my $dest = $sock->mcast_dest || croak "no destination specified with mcast_send() or mcast_dest()";
-#	
-#	return send($sock,$data,0,$dest);
-#}
+sub mcast_dest {
+	my $sock = shift;
+	my ($addr, $port) = @_;
+	
+	my $prev = ${*$sock}{'io_socket_mcast_dest'};
+	if (defined $addr) {
+		if ($sock->sockdomain() == AF_INET) {
+			if (!defined $port and $addr =~ /^($IPv4):(\d+)$/) {
+				$addr = $1; $port = $2;
+			}
+			
+			$addr = pack_sockaddr_in($port,inet_pton(AF_INET, $addr)) if (defined $port);
+			croak "Invalid destination address" if (!defined $addr or length($addr)==0);
+			croak "Destination isn't an IPv4 address" unless (sockaddr_family($addr)==AF_INET);
+			
+		} elsif ($sock->sockdomain() == AF_INET6) {
+			if (!defined $port and $addr =~ /^\[($IPv6)\]:(\d+)$/) {
+				$addr = $1; $port = $2;
+			}
+			
+			$addr = pack_sockaddr_in6($port,inet_pton(AF_INET6, $addr)) if (defined $port);
+			croak "Invalid destination address" if (!defined $addr or length($addr)==0);
+			croak "Destination isn't an IPv6 address" unless (sockaddr_family($addr)==AF_INET6);
+			
+		} else {
+			croak("mcast_dest failed, unsupported socket family." );
+		}
+		
+		${*$sock}{'io_socket_mcast_dest'} = $addr;
+	}
+
+	return $prev;
+}
+
+
+
+sub mcast_send {
+	my $sock = shift;
+	my $data = shift || croak 'usage: $sock->mcast_send($data [,$address[,$port]])';
+	$sock->mcast_dest(@_) if @_;
+	my $dest = $sock->mcast_dest || croak "no destination specified with mcast_send() or mcast_dest()";
+	
+	return send($sock,$data,0,$dest);
+}
 
 
 ## Returns the IPv4 address of an interface
@@ -396,7 +421,7 @@ messages that can be received by a socket so that only those sent to a
 particular multicast address are received, pass the B<LocalAddr>
 option to the socket at the time you create it:
 
-  my $socket = IO::Socket::Multicast->new(LocalPort=>2000,
+  my $socket = IO::Socket::Multicast6->new(LocalPort=>2000,
                                           LocalAddr=>226.1.1.2',
                                           ReuseAddr=>1);
   $socket->mcast_add('226.1.1.2');
@@ -454,7 +479,58 @@ B<NOTE>: To set the interface used for B<incoming> multicasts, use the
 mcast_add() method.
 
 
+=item $dest = $socket->mcast_dest
+
+=item $previous = $socket->mcast_dest($address [, $port])
+
+The mcast_dest() method is a convenience function that allows you to
+set the default destination group for outgoing multicasts.  Called
+without arguments, returns the current destination as a packed binary
+sockaddr_in/sockaddr_in6 data structure.  Called with a new destination 
+address, the method sets the default destination and returns the previous 
+one, if any.
+
+Destination addresses may be provided as packed sockaddr_in/sockaddr_in6
+structures, or address and port as strings.
+
+For IPv4 the address can be supplied in the form "XX.XX.XX.XX:YY" where 
+the first part is the IPv4 address, and the second the port number.
+
+For IPv6 the address can be supplied in the form 
+"[FFXX:XXXX::XXXX]:YY" where the first part is the IPv6 address,
+and the second the port number.
+
+Alternatively the port can be supplied as an additional parameter, 
+separate to the address.
+
+
+=item $bytes = $socket->mcast_send($data [,$address [,$port]])
+
+mcast_send() is a convenience function that simplifies the sending of
+multicast messages.  C<$data> is the message contents, and C<$dest> is
+an optional destination group.  You can use either the dotted IP form
+of the destination address and its port number, or a packed
+sockaddr_in/sockaddr_in6 structure.  If the destination is not supplied, 
+it will default to the most recent value set in mcast_dest() or a previous
+call to mcast_send().
+
+The method returns the number of bytes successfully queued for
+delivery.
+
+As a side-effect, the method will call mcast_dest() to remember the
+destination address.
+
+Example:
+
+  $socket->mcast_send('Hi there group members!','225.0.1.1:1900') || die;
+  $socket->mcast_send("How's the weather?") || die;
+
+Note that you may still call IO::Socket::INET6->new() with a
+B<PeerAddr>, and IO::Socket::INET6 will perform a connect(), creating a
+default destination for calls to send().
+
 =back
+
 
 =head1 EXAMPLE
 
@@ -471,7 +547,7 @@ chosen arbitrarily, the FF15:: is a Transient, Site Local prefix).
  use constant GROUP => 'FF15::0561';
  use constant PORT  => '2000';
  
- my $sock = IO::Socket::Multicast->new(
+ my $sock = IO::Socket::Multicast6->new(
                     Proto=>'udp',
                     Domain=>AF_INET6,
                     PeerAddr=>GROUP,
@@ -514,9 +590,6 @@ output.
 
 
 =head2 BUGS
-
-The mcast_dest() and mcast_send() methods that were in
-IO::Socket::Multicast are currently unimplemented.
 
 The mcast_if(), mcast_ttl() and mcast_loopback() methods will cause a
 crash on versions of Linux earlier than 2.2.0 because of a kernel bug
