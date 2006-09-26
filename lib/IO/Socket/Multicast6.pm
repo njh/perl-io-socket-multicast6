@@ -64,6 +64,31 @@ sub mcast_add {
 	return 1;
 }
 
+sub mcast_add_source {
+	my $sock = shift;
+	my $group = shift || croak 'usage: $sock->mcast_add_source($mcast_addr, $source_addr [,$interface])';
+	my $source = shift || croak 'usage: $sock->mcast_add_source($mcast_addr, $source_addr [,$interface])';
+	my $interface = shift;
+
+	if ($sock->sockdomain() == AF_INET) {
+		my $if_addr = _get_if_ipv4addr($interface);
+		my $ip_mreq = pack_ip_mreq_source(
+						inet_pton( AF_INET, $group ),
+						inet_pton( AF_INET, $source ),       
+						inet_pton( AF_INET, $if_addr ) );
+		
+		setsockopt($sock, IPPROTO_IP, IP_ADD_SOURCE_MEMBERSHIP, $ip_mreq )
+		or croak "Could not set IP_ADD_SOURCE_MEMBERSHIP socket option: $!";
+	} elsif ($sock->sockdomain() == AF_INET6) {
+		croak("mcast_add_source failed, IPv6 is currently unsupported." );
+	} else {
+		croak("mcast_add_source failed, unsupported socket family." );
+	}
+	
+	# Success
+	return 1;
+}
+
 
 sub mcast_drop {
 	my $sock = shift;
@@ -430,6 +455,12 @@ By combining this technique with IO::Select, you can write
 applications that listen to multiple multicast groups and distinguish
 which group a message was addressed to by identifying which socket it
 was received on.
+
+
+=item $success = $socket->mcast_add_source($multicast_add, $source_addr [,$interface])
+
+Same as mcast_add() but for Source Specific Multicast (SSM).
+
 
 =item $success = $socket->mcast_drop($multicast_address)
 
