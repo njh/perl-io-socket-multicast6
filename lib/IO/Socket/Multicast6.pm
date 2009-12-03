@@ -6,15 +6,14 @@ use vars qw(@ISA $VERSION);
 use IO::Socket::INET6;
 use IO::Interface::Simple;
 use Socket::Multicast6 qw/ :all /;
-use Socket6 qw/ AF_INET6 IPPROTO_IP IPPROTO_IPV6 
-                inet_pton inet_ntop pack_sockaddr_in6/;
-use Socket qw/ AF_INET sockaddr_family pack_sockaddr_in /;
+use Socket;
+use Socket6;
 use Carp 'croak';
 
 
 
 @ISA = qw(IO::Socket::INET6);
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 
 # Regular expressions to match IP addresses
@@ -627,19 +626,25 @@ crash on versions of Linux earlier than 2.2.0 because of a kernel bug
 in the implementation of the multicast socket options.
 
 
+=head1 SEE ALSO
+
+L<http://www.ietf.org/rfc/rfc2553.txt>
+
+perl(1), IO::Socket(3), Socket::Multicast6(3), IO::Socket::INET6(3).
+
 =head1 AUTHOR
 
 Based on L<IO::Socket::Multicast> by Lincoln Stein, lstein@cshl.org.
 
 IO::Socket::Multicast6 by Nicholas J Humfrey, E<lt>njh@cpan.orgE<gt>.
 
-This module is distributed under the same terms as Perl itself.
+=head1 COPYRIGHT AND LICENSE
 
+Copyright (C) 2006-2009 Nicholas J Humfrey
+Copyright (C) 2000-2005 Lincoln Stein
 
-=head1 SEE ALSO
-
-L<http://www.ietf.org/rfc/rfc2553.txt>
-
-perl(1), IO::Socket(3), Socket::Multicast6(3), IO::Socket::INET6(3).
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.6.1 or,
+at your option, any later version of Perl 5 you may have available.
 
 =cut
