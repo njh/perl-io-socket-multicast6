@@ -30,9 +30,6 @@ my $build = $class->new
 		'Socket::Multicast6'	=> '0.01',
 		'IO::Socket::INET6'		=> '2.51',
 	},
-	
-	create_makefile_pl => 'passthrough',
-	
 );
 
 $build->create_build_script;
